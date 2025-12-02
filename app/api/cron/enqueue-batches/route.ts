@@ -1,10 +1,15 @@
 import { NextResponse } from 'next/server';
 import { redis } from '@/lib/redis';
-import fetch from 'node-fetch';
 
 
 // Example: get tickers from DB and push batches into QStash (or store batch keys in Redis for QStash to pick up)
-export async function GET() {
+export async function GET(req: Request) {
+    // Verify it's from Vercel Cron
+    const authHeader = req.headers.get('authorization');
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     // Here, you would query your DB for active tickers; as placeholder, we use a small list
     const tickers = ['AAPL', 'MSFT', 'TSLA', 'GOOG', 'AMZN'];
     const batchSize = 50;
@@ -18,4 +23,7 @@ export async function GET() {
         });
     }
     return NextResponse.json({ enqueued: true });
+}
+
+export const maxDuration = 60;
 }

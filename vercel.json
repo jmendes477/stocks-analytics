@@ -1,5 +1,8 @@
 {
-  "cron": {
-    "enqueue-batches": "*/30 * * * *"
-  }
+  "crons": [
+    {
+      "path": "/api/cron/enqueue-batches",
+      "schedule": "*/30 * * * *"
+    }
+  ]
 }
