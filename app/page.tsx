@@ -1,8 +1,10 @@
+"use client";
+
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import "./App.css";
+// import "./globals.css"; // if you want to keep your CSS
 
-const App = () => {
+export default function HomePage() {
   const [selectedTicker, setSelectedTicker] = useState("");
   const [stockData, setStockData] = useState(null);
   const [intrinsicValues, setIntrinsicValues] = useState({
@@ -21,7 +23,6 @@ const App = () => {
 
   const tickers = ["AAPL", "GOOGL", "MSFT", "AMZN", "TSLA"];
 
-  // Fetch stock data securely via backend
   const fetchStockData = async (ticker) => {
     setLoading(true);
     setError("");
@@ -132,7 +133,9 @@ const App = () => {
             type="number"
             name="growthRate"
             value={parameters.growthRate}
-            onChange={(e) => setParameters({ ...parameters, growthRate: +e.target.value })}
+            onChange={(e) =>
+              setParameters({ ...parameters, growthRate: +e.target.value })
+            }
             className="input"
           />
         </div>
@@ -143,7 +146,9 @@ const App = () => {
             type="number"
             name="discountRate"
             value={parameters.discountRate}
-            onChange={(e) => setParameters({ ...parameters, discountRate: +e.target.value })}
+            onChange={(e) =>
+              setParameters({ ...parameters, discountRate: +e.target.value })
+            }
             className="input"
           />
         </div>
@@ -185,6 +190,4 @@ const App = () => {
       )}
     </div>
   );
-};
-
-export default App;
+}

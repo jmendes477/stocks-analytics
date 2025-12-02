@@ -1,0 +1,5 @@
+{
+  "cron": {
+    "enqueue-batches": "*/30 * * * *"
+  }
+}
