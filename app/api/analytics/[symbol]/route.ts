@@ -51,5 +51,6 @@ export async function POST(req: Request) {
 	}
 }
 
-export const runtime = 'edge';
+// Note: this route runs on the default Node server runtime so it can use
+// server-only packages (Postgres, Upstash QStash). Do not set `runtime = 'edge'`.
 

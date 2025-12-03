@@ -1,5 +1,8 @@
 import { createPool } from '@vercel/postgres';
-const pool = createPool(process.env.DATABASE_URL || '');
+
+// createPool accepts a config object. Pass the connection string under
+// `connectionString` so TypeScript matches the expected `VercelPostgresPoolConfig`.
+const pool = createPool({ connectionString: process.env.DATABASE_URL });
 export async function query(text: string, params?: any[]) {
     const client = await pool.connect();
     try {
