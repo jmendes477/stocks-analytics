@@ -35,19 +35,42 @@ export default function HomePage() {
     });
 
     try {
-      const response = await axios.get(`/api/yahoo?ticker=${ticker}`);
+      // Try to get analytics (cache / DB)
+      const analyticsPromise = axios.get(`/api/stocks/${ticker}`).catch((e) => e);
+      // Also attempt to get market details (price, eps) from Yahoo
+      const yahooPromise = axios.get(`/api/yahoo?ticker=${ticker}`).catch((e) => e);
 
-      const stock = response.data.body[0];
-      const { epsTrailingTwelveMonths: eps, trailingPE, sharesOutstanding } = stock;
-      const price = stock.regularMarketPrice;
+      const [analyticsRes, yahooRes] = await Promise.all([analyticsPromise, yahooPromise]);
+
+      let analytics = null;
+      if (analyticsRes && analyticsRes.status === 200 && !analyticsRes.data?.error) {
+        analytics = analyticsRes.data;
+      }
+
+      let market = null;
+      if (yahooRes && yahooRes.status === 200 && yahooRes.data?.body?.[0]) {
+        market = yahooRes.data.body[0];
+      }
+
+      const eps = market?.epsTrailingTwelveMonths ?? null;
+      const price = market?.regularMarketPrice ?? null;
+      const trailingPE = market?.trailingPE ?? null;
+      const sharesOutstanding = market?.sharesOutstanding ?? null;
 
       setStockData({
         eps,
         price,
         trailingPE,
         sharesOutstanding,
+        analytics,
       });
+
+      if (!analytics) {
+        // Friendly hint to the user (optional)
+        setError("Analytics not found for this ticker yet — processing may be required.");
+      }
     } catch (err) {
+      console.error("Failed fetching stock/analytics:", err);
       setError("Failed to fetch stock data. Please try again.");
     } finally {
       setLoading(false);
@@ -55,7 +78,8 @@ export default function HomePage() {
   };
 
   const calculateIntrinsicValues = () => {
-    if (!stockData) return;
+    // Only compute once we have necessary data
+    if (!stockData || stockData.eps == null || stockData.sharesOutstanding == null) return;
 
     const { eps, sharesOutstanding } = stockData;
     const { growthRate, discountRate, terminalGrowthRate } = parameters;
@@ -186,6 +210,16 @@ export default function HomePage() {
           <p>DCF: ${intrinsicValues.dcf}</p>
           <p>Benjamin Graham: ${intrinsicValues.graham}</p>
           <p>NAV: ${intrinsicValues.nav}</p>
+        </div>
+      )}
+
+      {stockData?.analytics && (
+        <div className="analytics-section">
+          <h3>Analytics</h3>
+          <p>SMA (20): {Number(stockData.analytics.sma20).toFixed(2)}</p>
+          <p>SMA (50): {Number(stockData.analytics.sma50).toFixed(2)}</p>
+          <p>EMA (12): {Number(stockData.analytics.ema12).toFixed(2)}</p>
+          <p>RSI (14): {Number(stockData.analytics.rsi14).toFixed(2)}</p>
         </div>
       )}
     </div>

@@ -10,14 +10,18 @@ export async function GET(req: Request, { params }: { params: { symbol: string }
         return NextResponse.json({ error: 'Missing symbol parameter' }, { status: 400 });
     }
 
+    console.log('API /api/stocks/[symbol] called for', symbol);
+
     try {
         // Try cache first
         const cached = await redis.get(`analytics:${symbol}`);
+        console.log('Redis cached value for', symbol, ':' , cached);
         if (cached) {
             // Redis client can return unknown; ensure we only call JSON.parse on strings
             if (typeof cached === 'string') {
                 try {
                     const parsed = JSON.parse(cached);
+                    console.log('Returning parsed cached value for', symbol, parsed);
                     return NextResponse.json(parsed);
                 } catch (e) {
                     // If cached value is corrupt, fallthrough to DB
@@ -25,6 +29,7 @@ export async function GET(req: Request, { params }: { params: { symbol: string }
                 }
             } else {
                 // If the client already returned a parsed object, return it directly
+                console.log('Returning non-string cached value for', symbol, cached);
                 return NextResponse.json(cached as any);
             }
         }
@@ -32,6 +37,7 @@ export async function GET(req: Request, { params }: { params: { symbol: string }
         // Fallback to DB
         const res = await query('SELECT * FROM analytics_latest WHERE symbol = $1', [symbol]);
         const row = res?.rows?.[0] || null;
+        console.log('DB row for', symbol, row);
         if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
         return NextResponse.json(row);
