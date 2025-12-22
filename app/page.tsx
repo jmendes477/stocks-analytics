@@ -113,115 +113,198 @@ export default function HomePage() {
 
   return (
     <div className="container">
-      <h1 className="header">Stock Intrinsic Value Calculator</h1>
-
-      <label>
-        Select or enter a stock ticker:
-        <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
-          <select
-            value={selectedTicker}
-            onChange={(e) => setSelectedTicker(e.target.value)}
-            className="select"
-          >
-            <option value="" disabled>
-              Select a stock
-            </option>
-            {tickers.map((ticker) => (
-              <option key={ticker} value={ticker}>
-                {ticker}
+      <div className="top-row">
+        <div>
+          <h1 className="header">Stock Intrinsic Value Calculator</h1>
+          <div className="controls">
+            <select
+              value={selectedTicker}
+              onChange={(e) => setSelectedTicker(e.target.value)}
+              className="select"
+            >
+              <option value="" disabled>
+                Select a stock
               </option>
-            ))}
-          </select>
+              {tickers.map((ticker) => (
+                <option key={ticker} value={ticker}>
+                  {ticker}
+                </option>
+              ))}
+            </select>
 
-          <input
-            type="text"
-            placeholder="Or type ticker"
-            className="input"
-            value={selectedTicker}
-            onChange={(e) => setSelectedTicker(e.target.value.toUpperCase())}
-          />
+            <input
+              type="text"
+              placeholder="Or type ticker"
+              className="input"
+              value={selectedTicker}
+              onChange={(e) => setSelectedTicker(e.target.value.toUpperCase())}
+            />
 
-          <button
-            onClick={() => selectedTicker && fetchStockData(selectedTicker)}
-            className="button"
-          >
-            Fetch Data
-          </button>
+            <button
+              onClick={() => selectedTicker && fetchStockData(selectedTicker)}
+              className="button"
+              disabled={loading}
+            >
+              {loading ? 'Fetching...' : 'Fetch Data'}
+            </button>
+          </div>
+
+          <div className="parameters">
+            <div className="input-group">
+              <label>Growth Rate (%):</label>
+              <input
+                type="number"
+                name="growthRate"
+                value={parameters.growthRate}
+                onChange={(e) => setParameters({ ...parameters, growthRate: +e.target.value })}
+                className="input"
+              />
+            </div>
+
+            <div className="input-group">
+              <label>Discount Rate (%):</label>
+              <input
+                type="number"
+                name="discountRate"
+                value={parameters.discountRate}
+                onChange={(e) => setParameters({ ...parameters, discountRate: +e.target.value })}
+                className="input"
+              />
+            </div>
+
+            <div className="input-group">
+              <label>Terminal Growth Rate (%):</label>
+              <input
+                type="number"
+                name="terminalGrowthRate"
+                value={parameters.terminalGrowthRate}
+                onChange={(e) => setParameters({ ...parameters, terminalGrowthRate: +e.target.value })}
+                className="input"
+              />
+            </div>
+          </div>
         </div>
-      </label>
 
-      <div className="parameters">
-        <div className="input-group">
-          <label>Growth Rate (%):</label>
-          <input
-            type="number"
-            name="growthRate"
-            value={parameters.growthRate}
-            onChange={(e) =>
-              setParameters({ ...parameters, growthRate: +e.target.value })
-            }
-            className="input"
-          />
+        <div className="summary-card card">
+          <div className="card-title">Summary</div>
+          <div className="summary-row">
+            <div className="price">{stockData?.price != null ? `$${Number(stockData.price).toFixed(2)}` : '—'}</div>
+            <div className="meta">
+              <div>EPS: <strong>{stockData?.eps != null ? `$${Number(stockData.eps).toFixed(2)}` : '—'}</strong></div>
+              <div>Trailing P/E: <strong>{stockData?.trailingPE ?? '—'}</strong></div>
+              <div>Shares: <strong>{stockData?.sharesOutstanding ?? '—'}</strong></div>
+            </div>
+          </div>
+          {stockData?.analytics?.updated_at && (
+            <div className="updated">Updated: {new Date(stockData.analytics.updated_at).toLocaleString()}</div>
+          )}
+        </div>
+      </div>
+
+      {error && <p className="error">{error}</p>}
+
+      <div className="tables-grid">
+        <div className="card">
+          <div className="card-title">Intrinsic Values</div>
+          <table className="table">
+            <thead>
+              <tr><th>Method</th><th>Value</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>P/E Method</td><td>{intrinsicValues.peMethod ? `$${intrinsicValues.peMethod}` : '—'}</td></tr>
+              <tr><td>DCF</td><td>{intrinsicValues.dcf ? `$${intrinsicValues.dcf}` : '—'}</td></tr>
+              <tr><td>Benjamin Graham</td><td>{intrinsicValues.graham ? `$${intrinsicValues.graham}` : '—'}</td></tr>
+              <tr><td>NAV</td><td>{intrinsicValues.nav ? `$${intrinsicValues.nav}` : '—'}</td></tr>
+            </tbody>
+          </table>
         </div>
 
-        <div className="input-group">
-          <label>Discount Rate (%):</label>
-          <input
-            type="number"
-            name="discountRate"
-            value={parameters.discountRate}
-            onChange={(e) =>
-              setParameters({ ...parameters, discountRate: +e.target.value })
-            }
-            className="input"
-          />
+        <div className="card">
+          <div className="card-title">Analytics</div>
+          <table className="table">
+            <thead>
+              <tr><th>Metric</th><th>Value</th></tr>
+            </thead>
+            <tbody>
+              {stockData?.analytics && Object.entries(stockData.analytics).map(([k, v]) => {
+                if (v == null) return null;
+                if (k === 'symbol') return null;
+                const keyLower = k.toLowerCase();
+                const valNum = typeof v === 'number' ? v : (Number(v).toString() === 'NaN' ? null : Number(v));
+                let cls = 'neutral';
+                let arrow = '';
+                if (keyLower.includes('rsi') && typeof valNum === 'number') {
+                  cls = valNum >= 70 ? 'negative' : valNum <= 30 ? 'positive' : 'neutral';
+                }
+                if ((keyLower.includes('sma') || keyLower.includes('ema')) && typeof valNum === 'number' && stockData?.price != null) {
+                  cls = stockData.price > valNum ? 'positive' : 'negative';
+                  arrow = stockData.price > valNum ? '▲' : '▼';
+                }
+                return (
+                  <tr key={k} className={cls}><td>{k.replace(/_/g,' ').toUpperCase()}</td><td><span className={`badge ${cls}`}>{valNum != null ? valNum.toFixed(2) : String(v)} {arrow}</span></td></tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
 
-        <div className="input-group">
-          <label>Terminal Growth Rate (%):</label>
-          <input
-            type="number"
-            name="terminalGrowthRate"
-            value={parameters.terminalGrowthRate}
-            onChange={(e) =>
-              setParameters({ ...parameters, terminalGrowthRate: +e.target.value })
-            }
-            className="input"
-          />
+        <div className="card">
+          <div className="card-title">Fundamentals</div>
+          <table className="table">
+            <thead>
+              <tr><th>Metric</th><th>Value</th></tr>
+            </thead>
+            <tbody>
+              {stockData?.fundamentals ? (
+                <>
+                  <tr><td>PE Ratio</td><td>{stockData.fundamentals.pe_ratio != null ? Number(stockData.fundamentals.pe_ratio).toFixed(2) : '—'}</td></tr>
+                  <tr><td>Forward PE</td><td>{stockData.fundamentals.forward_pe != null ? Number(stockData.fundamentals.forward_pe).toFixed(2) : '—'}</td></tr>
+                  <tr><td>PB Ratio</td><td>{stockData.fundamentals.pb_ratio != null ? Number(stockData.fundamentals.pb_ratio).toFixed(2) : '—'}</td></tr>
+                  <tr><td>PS Ratio</td><td>{stockData.fundamentals.ps_ratio != null ? Number(stockData.fundamentals.ps_ratio).toFixed(2) : '—'}</td></tr>
+                  <tr><td>EV / EBITDA</td><td>{stockData.fundamentals.ev_ebitda != null ? Number(stockData.fundamentals.ev_ebitda).toFixed(2) : '—'}</td></tr>
+                  <tr><td>ROE</td><td>{stockData.fundamentals.roe != null ? (Number(stockData.fundamentals.roe)*100).toFixed(2) + '%' : '—'}</td></tr>
+                  <tr><td>Revenue Growth (3y)</td><td>{stockData.fundamentals.revenue_growth_3y != null ? (Number(stockData.fundamentals.revenue_growth_3y)*100).toFixed(2) + '%' : '—'}</td></tr>
+                  <tr><td>EPS Growth (3y)</td><td>{stockData.fundamentals.eps_growth_3y != null ? (Number(stockData.fundamentals.eps_growth_3y)*100).toFixed(2) + '%' : '—'}</td></tr>
+                </>
+              ) : (
+                <tr><td colSpan={2}>Fundamentals not available</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="card">
+          <div className="card-title">Risk & Scores</div>
+          <table className="table">
+            <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+            <tbody>
+              {stockData?.risk ? (
+                <>
+                  <tr><td>Beta</td><td>{stockData.risk.beta != null ? Number(stockData.risk.beta).toFixed(2) : '—'}</td></tr>
+                  <tr><td>Volatility 30d</td><td>{stockData.risk.volatility_30d != null ? Number(stockData.risk.volatility_30d).toFixed(2) : '—'}</td></tr>
+                </>
+              ) : null}
+
+              {stockData?.zscores ? (
+                <>
+                  <tr><td>PE z-score</td><td>{stockData.zscores.pe_zscore != null ? Number(stockData.zscores.pe_zscore).toFixed(2) : '—'}</td></tr>
+                  <tr><td>PS z-score</td><td>{stockData.zscores.ps_zscore != null ? Number(stockData.zscores.ps_zscore).toFixed(2) : '—'}</td></tr>
+                </>
+              ) : null}
+
+              {stockData?.composite ? (
+                <tr><td>Total Score</td><td>{stockData.composite.total_score != null ? Number(stockData.composite.total_score).toFixed(2) : '—'}</td></tr>
+              ) : null}
+
+              {!stockData?.risk && !stockData?.zscores && !stockData?.composite && (
+                <tr><td colSpan={2}>No risk/scores data</td></tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
       {loading && <p>Loading...</p>}
-      {error && <p className="error">{error}</p>}
-
-      {stockData && (
-        <div className="data-section">
-          <h3>Stock Details</h3>
-          <p>Price: ${stockData.price}</p>
-          <p>EPS: ${stockData.eps}</p>
-          <p>Trailing P/E: {stockData.trailingPE}</p>
-        </div>
-      )}
-
-      {intrinsicValues && (
-        <div className="intrinsic-values">
-          <h3>Intrinsic Value</h3>
-          <p>P/E Method: ${intrinsicValues.peMethod}</p>
-          <p>DCF: ${intrinsicValues.dcf}</p>
-          <p>Benjamin Graham: ${intrinsicValues.graham}</p>
-          <p>NAV: ${intrinsicValues.nav}</p>
-        </div>
-      )}
-
-      {stockData?.analytics && (
-        <div className="analytics-section">
-          <h3>Analytics</h3>
-          <p>SMA (20): {Number(stockData.analytics.sma20).toFixed(2)}</p>
-          <p>SMA (50): {Number(stockData.analytics.sma50).toFixed(2)}</p>
-          <p>EMA (12): {Number(stockData.analytics.ema12).toFixed(2)}</p>
-          <p>RSI (14): {Number(stockData.analytics.rsi14).toFixed(2)}</p>
-        </div>
-      )}
     </div>
   );
 }
