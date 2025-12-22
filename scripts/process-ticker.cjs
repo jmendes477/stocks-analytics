@@ -1,5 +1,18 @@
 // CommonJS version for running without ts-node
 try { require('dotenv').config({ path: '.env.local' }); } catch (e) { /* noop */ }
+
+// Ensure `fetch` exists in older Node versions (<18). Prefer upgrading to Node 18+.
+// If `undici` is installed, use it as a polyfill; otherwise exit with a clear message.
+if (typeof fetch === 'undefined') {
+  try {
+    const { fetch: undiciFetch } = require('undici');
+    global.fetch = undiciFetch;
+  } catch (err) {
+    console.error('Error: global `fetch` is not defined and `undici` is not installed. Install Node 18+ or run `npm install undici`.');
+    process.exit(1);
+  }
+}
+
 const { createPool } = require('@vercel/postgres');
 const Yahoo = require('yahoo-finance2');
 const { Redis } = require('@upstash/redis');

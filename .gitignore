@@ -25,3 +25,7 @@ yarn-error.log*
 node_modules
 .vercel
 .next
+scripts/logs/
+scripts/__pycache__/
+scripts/symbols.txt
+scripts/nasdaq-listed.csv

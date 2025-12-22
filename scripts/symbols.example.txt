@@ -1,0 +1,12 @@
+# Example symbols file for ingest_common_stocks.py
+# One ticker symbol per line. Lines starting with '#' are ignored.
+AAPL
+MSFT
+GOOGL
+AMZN
+TSLA
+NVDA
+JPM
+BAC
+WMT
+DIS
