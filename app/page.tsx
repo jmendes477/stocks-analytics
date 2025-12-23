@@ -36,21 +36,34 @@ export default function HomePage() {
 
     try {
       // Try to get analytics (cache / DB)
-      const analyticsPromise = axios.get(`/api/stocks/${ticker}`).catch((e) => e);
+      const analyticsPromise = axios.get(`/api/stocks/${ticker}`).catch((e) => e.response || e);
       // Also attempt to get market details (price, eps) from Yahoo
-      const yahooPromise = axios.get(`/api/yahoo?ticker=${ticker}`).catch((e) => e);
+      const yahooPromise = axios.get(`/api/yahoo?ticker=${ticker}`).catch((e) => e.response || e);
 
       const [analyticsRes, yahooRes] = await Promise.all([analyticsPromise, yahooPromise]);
 
-      let analytics = null;
+      // Normalize API response: the server returns EITHER a raw analytics object (from Redis cache)
+      // OR a nested object with `analytics`, `fundamentals`, etc. (from DB fallback). Handle both.
+      console.log('analyticsRes:', analyticsRes);
+      let apiData = null;
       if (analyticsRes && analyticsRes.status === 200 && !analyticsRes.data?.error) {
-        analytics = analyticsRes.data;
+        const d = analyticsRes.data;
+        if (d && typeof d === 'object') {
+          if (d.analytics || d.fundamentals || d.risk || d.zscores || d.composite) {
+            apiData = d;
+          } else {
+            // Cached single-analytics shape — wrap so rest of the UI expects the nested shape
+            apiData = { analytics: d, fundamentals: null, risk: null, zscores: null, composite: null };
+          }
+        }
       }
 
       let market = null;
       if (yahooRes && yahooRes.status === 200 && yahooRes.data?.body?.[0]) {
         market = yahooRes.data.body[0];
       }
+
+      console.log('apiData after normalization:', apiData);
 
       const eps = market?.epsTrailingTwelveMonths ?? null;
       const price = market?.regularMarketPrice ?? null;
@@ -62,10 +75,14 @@ export default function HomePage() {
         price,
         trailingPE,
         sharesOutstanding,
-        analytics,
+        analytics: apiData?.analytics ?? null,
+        fundamentals: apiData?.fundamentals ?? null,
+        risk: apiData?.risk ?? null,
+        zscores: apiData?.zscores ?? null,
+        composite: apiData?.composite ?? null,
       });
 
-      if (!analytics) {
+      if (!apiData?.analytics) {
         // Friendly hint to the user (optional)
         setError("Analytics not found for this ticker yet — processing may be required.");
       }
