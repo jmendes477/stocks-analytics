@@ -21,8 +21,8 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // UI sections (overview / strong-buys)
-  const [section, setSection] = useState<'overview' | 'strong-buys'>('overview');
+  // UI sections (overview / analysis)
+  const [section, setSection] = useState<'overview' | 'analysis'>('overview');
 
   // Strong Buys data
   const [strongBuys, setStrongBuys] = useState<any[] | null>(null);
@@ -137,10 +137,10 @@ export default function HomePage() {
     calculateIntrinsicValues();
   }, [parameters, stockData]);
 
-  // Fetch strong buys when the user switches to that section
+  // Fetch analysis when the user switches to that section
   useEffect(() => {
-    if (section !== 'strong-buys') return;
-    const fetchStrongBuys = async () => {
+    if (section !== 'analysis') return;
+    const fetchAnalysis = async () => {
       setStrongBuysLoading(true);
       setStrongBuysError('');
       try {
@@ -152,14 +152,14 @@ export default function HomePage() {
           setStrongBuysError(res?.data?.error || 'No data');
         }
       } catch (err) {
-        console.error('Failed fetching strong buys:', err);
-        setStrongBuysError('Failed to fetch strong buys');
+        console.error('Failed fetching analysis (strong-buys):', err);
+        setStrongBuysError('Failed to fetch results');
         setStrongBuys([]);
       } finally {
         setStrongBuysLoading(false);
       }
     };
-    fetchStrongBuys();
+    fetchAnalysis();
   }, [section]);
 
 
@@ -239,7 +239,7 @@ export default function HomePage() {
           {/* Section tabs */}
           <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
             <button className={`button ${section === 'overview' ? 'active' : ''}`} onClick={() => setSection('overview')}>Overview</button>
-            <button className={`button ${section === 'strong-buys' ? 'active' : ''}`} onClick={() => setSection('strong-buys')}>Strong Buys</button>
+            <button className={`button ${section === 'analysis' ? 'active' : ''}`} onClick={() => setSection('analysis')}>Analysis</button>
           </div>
         </div>
 
@@ -365,13 +365,13 @@ export default function HomePage() {
       ) : (
         <div className="tables-grid">
           <div className="card">
-            <div className="card-title">Strong Buys</div>
+            <div className="card-title">Analysis</div>
             {strongBuysLoading ? (
-              <p>Loading strong buys...</p>
+              <p>Loading results...</p>
             ) : strongBuysError ? (
               <p className="error">{strongBuysError}</p>
             ) : !strongBuys || strongBuys.length === 0 ? (
-              <p>No strong buys found</p>
+              <p>No results found</p>
             ) : (
               <table className="table">
                 <thead>
@@ -409,6 +409,10 @@ export default function HomePage() {
           </div>
         </div>
       )}
+
+      <footer className="footer" style={{ marginTop: 24, paddingTop: 12, borderTop: '1px solid #eee', color: '#666' }}>
+        <p style={{ margin: 0, fontSize: '0.9rem' }}><strong>Disclaimer:</strong> This website is for educational and informational purposes only and does not constitute financial advice.</p>
+      </footer>
 
       {loading && <p>Loading...</p>}
     </div>
