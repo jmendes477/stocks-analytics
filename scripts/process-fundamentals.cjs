@@ -1,6 +1,16 @@
 // CommonJS version
 try { require('dotenv').config({ path: '.env.local' }); } catch (e) { /* noop */ }
 
+// Ensure a global fetch is available (yahoo-finance2 expects it)
+try {
+  if (typeof fetch === 'undefined') {
+    // use undici's fetch (already a dependency) when running under Node without global fetch
+    // CommonJS require works for undici
+    const { fetch: undiciFetch } = require('undici');
+    global.fetch = undiciFetch;
+  }
+} catch (e) { /* ignore */ }
+
 const { createPool } = require('@vercel/postgres');
 const Yahoo = require('yahoo-finance2');
 
