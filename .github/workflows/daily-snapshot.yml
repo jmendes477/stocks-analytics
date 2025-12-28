@@ -1,0 +1,32 @@
+name: Daily fundamentals snapshot
+
+on:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Set to "true" to overwrite today'
+        required: false
+        default: 'false'
+
+jobs:
+  snapshot:
+    name: Snapshot fundamentals
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      FORCE_UPDATE: ${{ github.event.inputs.force || secrets.FORCE_UPDATE }} # optional, set to 'true' to overwrite today's rows
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run snapshot
+        run: node ./scripts/snapshot-fundamentals.cjs
+        timeout-minutes: 15
