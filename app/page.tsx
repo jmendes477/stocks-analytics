@@ -21,6 +21,15 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // UI sections (overview / analysis)
+  const [section, setSection] = useState<'overview' | 'analysis'>('overview');
+
+  // Strong Buys data
+  const [strongBuys, setStrongBuys] = useState<any[] | null>(null);
+  const [strongBuysLoading, setStrongBuysLoading] = useState(false);
+  const [strongBuysError, setStrongBuysError] = useState('');
+
+
   const tickers = ["AAPL", "GOOGL", "MSFT", "AMZN", "TSLA"];
 
   const fetchStockData = async (ticker) => {
@@ -128,6 +137,32 @@ export default function HomePage() {
     calculateIntrinsicValues();
   }, [parameters, stockData]);
 
+  // Fetch analysis when the user switches to that section
+  useEffect(() => {
+    if (section !== 'analysis') return;
+    const fetchAnalysis = async () => {
+      setStrongBuysLoading(true);
+      setStrongBuysError('');
+      try {
+        const res = await axios.get('/api/strong-buys').catch((e) => e.response || e);
+        if (res && res.status === 200 && res.data?.ok) {
+          setStrongBuys(res.data.rows || []);
+        } else {
+          setStrongBuys([]);
+          setStrongBuysError(res?.data?.error || 'No data');
+        }
+      } catch (err) {
+        console.error('Failed fetching analysis (strong-buys):', err);
+        setStrongBuysError('Failed to fetch results');
+        setStrongBuys([]);
+      } finally {
+        setStrongBuysLoading(false);
+      }
+    };
+    fetchAnalysis();
+  }, [section]);
+
+
   return (
     <div className="container">
       <div className="top-row">
@@ -200,6 +235,12 @@ export default function HomePage() {
               />
             </div>
           </div>
+
+          {/* Section tabs */}
+          <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+            <button className={`button ${section === 'overview' ? 'active' : ''}`} onClick={() => setSection('overview')}>Overview</button>
+            <button className={`button ${section === 'analysis' ? 'active' : ''}`} onClick={() => setSection('analysis')}>Analysis</button>
+          </div>
         </div>
 
         <div className="summary-card card">
@@ -220,106 +261,158 @@ export default function HomePage() {
 
       {error && <p className="error">{error}</p>}
 
-      <div className="tables-grid">
-        <div className="card">
-          <div className="card-title">Intrinsic Values</div>
-          <table className="table">
-            <thead>
-              <tr><th>Method</th><th>Value</th></tr>
-            </thead>
-            <tbody>
-              <tr><td>P/E Method</td><td>{intrinsicValues.peMethod ? `$${intrinsicValues.peMethod}` : '—'}</td></tr>
-              <tr><td>DCF</td><td>{intrinsicValues.dcf ? `$${intrinsicValues.dcf}` : '—'}</td></tr>
-              <tr><td>Benjamin Graham</td><td>{intrinsicValues.graham ? `$${intrinsicValues.graham}` : '—'}</td></tr>
-              <tr><td>NAV</td><td>{intrinsicValues.nav ? `$${intrinsicValues.nav}` : '—'}</td></tr>
-            </tbody>
-          </table>
+      {section === 'overview' ? (
+        <div className="tables-grid">
+          <div className="card">
+            <div className="card-title">Intrinsic Values</div>
+            <table className="table">
+              <thead>
+                <tr><th>Method</th><th>Value</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>P/E Method</td><td>{intrinsicValues.peMethod ? `$${intrinsicValues.peMethod}` : '—'}</td></tr>
+                <tr><td>DCF</td><td>{intrinsicValues.dcf ? `$${intrinsicValues.dcf}` : '—'}</td></tr>
+                <tr><td>Benjamin Graham</td><td>{intrinsicValues.graham ? `$${intrinsicValues.graham}` : '—'}</td></tr>
+                <tr><td>NAV</td><td>{intrinsicValues.nav ? `$${intrinsicValues.nav}` : '—'}</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div className="card">
+            <div className="card-title">Analytics</div>
+            <table className="table">
+              <thead>
+                <tr><th>Metric</th><th>Value</th></tr>
+              </thead>
+              <tbody>
+                {stockData?.analytics && Object.entries(stockData.analytics).map(([k, v]) => {
+                  if (v == null) return null;
+                  if (k === 'symbol') return null;
+                  const keyLower = k.toLowerCase();
+                  const valNum = typeof v === 'number' ? v : (Number(v).toString() === 'NaN' ? null : Number(v));
+                  let cls = 'neutral';
+                  let arrow = '';
+                  if (keyLower.includes('rsi') && typeof valNum === 'number') {
+                    cls = valNum >= 70 ? 'negative' : valNum <= 30 ? 'positive' : 'neutral';
+                  }
+                  if ((keyLower.includes('sma') || keyLower.includes('ema')) && typeof valNum === 'number' && stockData?.price != null) {
+                    cls = stockData.price > valNum ? 'positive' : 'negative';
+                    arrow = stockData.price > valNum ? '▲' : '▼';
+                  }
+                  return (
+                    <tr key={k} className={cls}><td>{k.replace(/_/g,' ').toUpperCase()}</td><td><span className={`badge ${cls}`}>{valNum != null ? valNum.toFixed(2) : String(v)} {arrow}</span></td></tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="card">
+            <div className="card-title">Fundamentals</div>
+            <table className="table">
+              <thead>
+                <tr><th>Metric</th><th>Value</th></tr>
+              </thead>
+              <tbody>
+                {stockData?.fundamentals ? (
+                  <>
+                    <tr><td>PE Ratio</td><td>{stockData.fundamentals.pe_ratio != null ? Number(stockData.fundamentals.pe_ratio).toFixed(2) : '—'}</td></tr>
+                    <tr><td>Forward PE</td><td>{stockData.fundamentals.forward_pe != null ? Number(stockData.fundamentals.forward_pe).toFixed(2) : '—'}</td></tr>
+                    <tr><td>PB Ratio</td><td>{stockData.fundamentals.pb_ratio != null ? Number(stockData.fundamentals.pb_ratio).toFixed(2) : '—'}</td></tr>
+                    <tr><td>PS Ratio</td><td>{stockData.fundamentals.ps_ratio != null ? Number(stockData.fundamentals.ps_ratio).toFixed(2) : '—'}</td></tr>
+                    <tr><td>EV / EBITDA</td><td>{stockData.fundamentals.ev_ebitda != null ? Number(stockData.fundamentals.ev_ebitda).toFixed(2) : '—'}</td></tr>
+                    <tr><td>ROE</td><td>{stockData.fundamentals.roe != null ? (Number(stockData.fundamentals.roe)*100).toFixed(2) + '%' : '—'}</td></tr>
+                    <tr><td>Revenue Growth (3y)</td><td>{stockData.fundamentals.revenue_growth_3y != null ? (Number(stockData.fundamentals.revenue_growth_3y)*100).toFixed(2) + '%' : '—'}</td></tr>
+                    <tr><td>EPS Growth (3y)</td><td>{stockData.fundamentals.eps_growth_3y != null ? (Number(stockData.fundamentals.eps_growth_3y)*100).toFixed(2) + '%' : '—'}</td></tr>
+                  </>
+                ) : (
+                  <tr><td colSpan={2}>Fundamentals not available</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="card">
+            <div className="card-title">Risk & Scores</div>
+            <table className="table">
+              <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+              <tbody>
+                {stockData?.risk ? (
+                  <>
+                    <tr><td>Beta</td><td>{stockData.risk.beta != null ? Number(stockData.risk.beta).toFixed(2) : '—'}</td></tr>
+                    <tr><td>Volatility 30d</td><td>{stockData.risk.volatility_30d != null ? Number(stockData.risk.volatility_30d).toFixed(2) : '—'}</td></tr>
+                  </>
+                ) : null}
+
+                {stockData?.zscores ? (
+                  <>
+                    <tr><td>PE z-score</td><td>{stockData.zscores.pe_zscore != null ? Number(stockData.zscores.pe_zscore).toFixed(2) : '—'}</td></tr>
+                    <tr><td>PS z-score</td><td>{stockData.zscores.ps_zscore != null ? Number(stockData.zscores.ps_zscore).toFixed(2) : '—'}</td></tr>
+                  </>
+                ) : null}
+
+                {stockData?.composite ? (
+                  <tr><td>Total Score</td><td>{stockData.composite.total_score != null ? Number(stockData.composite.total_score).toFixed(2) : '—'}</td></tr>
+                ) : null}
+
+                {!stockData?.risk && !stockData?.zscores && !stockData?.composite && (
+                  <tr><td colSpan={2}>No risk/scores data</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-
-        <div className="card">
-          <div className="card-title">Analytics</div>
-          <table className="table">
-            <thead>
-              <tr><th>Metric</th><th>Value</th></tr>
-            </thead>
-            <tbody>
-              {stockData?.analytics && Object.entries(stockData.analytics).map(([k, v]) => {
-                if (v == null) return null;
-                if (k === 'symbol') return null;
-                const keyLower = k.toLowerCase();
-                const valNum = typeof v === 'number' ? v : (Number(v).toString() === 'NaN' ? null : Number(v));
-                let cls = 'neutral';
-                let arrow = '';
-                if (keyLower.includes('rsi') && typeof valNum === 'number') {
-                  cls = valNum >= 70 ? 'negative' : valNum <= 30 ? 'positive' : 'neutral';
-                }
-                if ((keyLower.includes('sma') || keyLower.includes('ema')) && typeof valNum === 'number' && stockData?.price != null) {
-                  cls = stockData.price > valNum ? 'positive' : 'negative';
-                  arrow = stockData.price > valNum ? '▲' : '▼';
-                }
-                return (
-                  <tr key={k} className={cls}><td>{k.replace(/_/g,' ').toUpperCase()}</td><td><span className={`badge ${cls}`}>{valNum != null ? valNum.toFixed(2) : String(v)} {arrow}</span></td></tr>
-                );
-              })}
-            </tbody>
-          </table>
+      ) : (
+        <div className="tables-grid">
+          <div className="card">
+            <div className="card-title">Analysis</div>
+            {strongBuysLoading ? (
+              <p>Loading results...</p>
+            ) : strongBuysError ? (
+              <p className="error">{strongBuysError}</p>
+            ) : !strongBuys || strongBuys.length === 0 ? (
+              <p>No results found</p>
+            ) : (
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Symbol</th>
+                    <th>Name</th>
+                    <th>PE z-score</th>
+                    <th>EV/EBITDA z</th>
+                    <th>PE z-score (hist)</th>
+                    <th>ROIC</th>
+                    <th>ROE</th>
+                    <th>Operating Margin</th>
+                    <th>Beta</th>
+                    <th>Total Score</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {strongBuys.map((r) => (
+                    <tr key={r.symbol}>
+                      <td><strong>{r.symbol}</strong></td>
+                      <td>{r.name}</td>
+                      <td>{r.pe_zscore != null ? Number(r.pe_zscore).toFixed(2) : '—'}</td>
+                      <td>{r.ev_ebitda_zscore != null ? Number(r.ev_ebitda_zscore).toFixed(2) : '—'}</td>
+                      <td>{r.pe_zscore_ts != null ? Number(r.pe_zscore_ts).toFixed(2) : '—'}</td>
+                      <td>{r.roic != null ? (Number(r.roic) * 100).toFixed(2) + '%' : '—'}</td>
+                      <td>{r.roe != null ? (Number(r.roe) * 100).toFixed(2) + '%' : '—'}</td>
+                      <td>{r.operating_margin != null ? (Number(r.operating_margin) * 100).toFixed(2) + '%' : '—'}</td>
+                      <td>{r.beta != null ? Number(r.beta).toFixed(2) : '—'}</td>
+                      <td>{r.total_score != null ? Number(r.total_score).toFixed(2) : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
+      )}
 
-        <div className="card">
-          <div className="card-title">Fundamentals</div>
-          <table className="table">
-            <thead>
-              <tr><th>Metric</th><th>Value</th></tr>
-            </thead>
-            <tbody>
-              {stockData?.fundamentals ? (
-                <>
-                  <tr><td>PE Ratio</td><td>{stockData.fundamentals.pe_ratio != null ? Number(stockData.fundamentals.pe_ratio).toFixed(2) : '—'}</td></tr>
-                  <tr><td>Forward PE</td><td>{stockData.fundamentals.forward_pe != null ? Number(stockData.fundamentals.forward_pe).toFixed(2) : '—'}</td></tr>
-                  <tr><td>PB Ratio</td><td>{stockData.fundamentals.pb_ratio != null ? Number(stockData.fundamentals.pb_ratio).toFixed(2) : '—'}</td></tr>
-                  <tr><td>PS Ratio</td><td>{stockData.fundamentals.ps_ratio != null ? Number(stockData.fundamentals.ps_ratio).toFixed(2) : '—'}</td></tr>
-                  <tr><td>EV / EBITDA</td><td>{stockData.fundamentals.ev_ebitda != null ? Number(stockData.fundamentals.ev_ebitda).toFixed(2) : '—'}</td></tr>
-                  <tr><td>ROE</td><td>{stockData.fundamentals.roe != null ? (Number(stockData.fundamentals.roe)*100).toFixed(2) + '%' : '—'}</td></tr>
-                  <tr><td>Revenue Growth (3y)</td><td>{stockData.fundamentals.revenue_growth_3y != null ? (Number(stockData.fundamentals.revenue_growth_3y)*100).toFixed(2) + '%' : '—'}</td></tr>
-                  <tr><td>EPS Growth (3y)</td><td>{stockData.fundamentals.eps_growth_3y != null ? (Number(stockData.fundamentals.eps_growth_3y)*100).toFixed(2) + '%' : '—'}</td></tr>
-                </>
-              ) : (
-                <tr><td colSpan={2}>Fundamentals not available</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="card">
-          <div className="card-title">Risk & Scores</div>
-          <table className="table">
-            <thead><tr><th>Metric</th><th>Value</th></tr></thead>
-            <tbody>
-              {stockData?.risk ? (
-                <>
-                  <tr><td>Beta</td><td>{stockData.risk.beta != null ? Number(stockData.risk.beta).toFixed(2) : '—'}</td></tr>
-                  <tr><td>Volatility 30d</td><td>{stockData.risk.volatility_30d != null ? Number(stockData.risk.volatility_30d).toFixed(2) : '—'}</td></tr>
-                </>
-              ) : null}
-
-              {stockData?.zscores ? (
-                <>
-                  <tr><td>PE z-score</td><td>{stockData.zscores.pe_zscore != null ? Number(stockData.zscores.pe_zscore).toFixed(2) : '—'}</td></tr>
-                  <tr><td>PS z-score</td><td>{stockData.zscores.ps_zscore != null ? Number(stockData.zscores.ps_zscore).toFixed(2) : '—'}</td></tr>
-                </>
-              ) : null}
-
-              {stockData?.composite ? (
-                <tr><td>Total Score</td><td>{stockData.composite.total_score != null ? Number(stockData.composite.total_score).toFixed(2) : '—'}</td></tr>
-              ) : null}
-
-              {!stockData?.risk && !stockData?.zscores && !stockData?.composite && (
-                <tr><td colSpan={2}>No risk/scores data</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <footer className="footer" style={{ marginTop: 24, paddingTop: 12, borderTop: '1px solid #eee', color: '#666' }}>
+        <p style={{ margin: 0, fontSize: '0.9rem' }}><strong>Disclaimer:</strong> This website is for educational and informational purposes only and does not constitute financial advice.</p>
+      </footer>
 
       {loading && <p>Loading...</p>}
     </div>

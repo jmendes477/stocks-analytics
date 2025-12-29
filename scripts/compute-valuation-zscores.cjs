@@ -32,6 +32,7 @@ async function computeZScores() {
 
   try {
     console.log('Computing valuation Z-scores...');
+    console.time('valuation_zscores_total');
 
     // ---- Load all fundamentals
     const { rows } = await pool.query(`
@@ -47,6 +48,8 @@ async function computeZScores() {
          OR ps_ratio IS NOT NULL
          OR ev_ebitda IS NOT NULL
     `);
+
+    console.log(`Loaded ${rows.length} symbols from fundamentals_latest`);
 
     if (rows.length < 10) {
       console.warn('Not enough data to compute Z-scores');
@@ -67,7 +70,8 @@ async function computeZScores() {
     };
 
     // ---- Insert/update Z-scores
-    for (const r of rows) {
+    let updatedCount = 0;
+    for (const [i, r] of rows.entries()) {
       const pe_z = stats.pe ? zscore(r.pe_ratio, stats.pe.avg, stats.pe.sd) : null;
       const pb_z = stats.pb ? zscore(r.pb_ratio, stats.pb.avg, stats.pb.sd) : null;
       const ps_z = stats.ps ? zscore(r.ps_ratio, stats.ps.avg, stats.ps.sd) : null;
@@ -96,9 +100,15 @@ async function computeZScores() {
         ps_z,
         ev_z
       ]);
+
+      updatedCount++;
+      if (updatedCount % 100 === 0) {
+        console.log(`Updated ${updatedCount}/${rows.length} symbols...`);
+      }
     }
 
-    console.log('✓ Z-scores computed for', rows.length, 'stocks');
+    console.timeEnd('valuation_zscores_total');
+    console.log('✓ Z-scores computed for', rows.length, 'stocks (updated', updatedCount, 'rows)');
 
     // ---- Log global stats (debug)
     console.log('Global valuation stats:', {
