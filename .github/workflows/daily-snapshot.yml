@@ -26,7 +26,19 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
+      - name: Preflight check DB connectivity
+        run: |
+          echo 'Checking DB connectivity (will not echo secrets)'
+          sudo apt-get update && sudo apt-get install -y postgresql-client || true
+          if psql "$DATABASE_URL" -t -A -c "SELECT 1" >/dev/null 2>&1; then
+            echo 'DB reachable'
+          else
+            echo 'ERROR: DB connectivity/authentication failed' >&2
+            # attempt to show a helpful hint without revealing secrets
+            echo "Check repo secret \\`DATABASE_URL\\` and user/password for the DB (neon, postgres, etc)."
+            exit 1
+          fi
+        timeout-minutes: 2
       - name: Debug process first 10 symbols
         run: |
           head -n 10 scripts/symbols.txt > scripts/tmp_symbols.txt
