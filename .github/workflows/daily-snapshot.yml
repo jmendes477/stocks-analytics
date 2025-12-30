@@ -27,6 +27,28 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Debug: process first 10 symbols
+        run: |
+          head -n 10 scripts/symbols.txt > scripts/tmp_symbols.txt
+          bash ./scripts/process_all_fundamentals.sh --symbols-file scripts/tmp_symbols.txt --parallel 1
+        timeout-minutes: 10
+
+      - name: Debug: show debug logs and DB counts
+        run: |
+          ls -la scripts/logs || true
+          tail -n 200 scripts/logs/process_fundamentals.log || true
+          tail -n 200 scripts/logs/process_fundamentals.err || true
+          sudo apt-get update && sudo apt-get install -y postgresql-client || true
+          psql "$DATABASE_URL" -t -A -c "SELECT count(*) FROM fundamentals_latest;" || true
+          psql "$DATABASE_URL" -t -A -c "SELECT count(*) FROM fundamentals_history WHERE as_of = CURRENT_DATE;" || true
+        timeout-minutes: 5
+
+      - name: Upload debug logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-process-fundamentals-logs
+          path: scripts/logs
+
       - name: Process fundamentals
         run: bash ./scripts/process_all_fundamentals.sh --parallel 4
         timeout-minutes: 240
