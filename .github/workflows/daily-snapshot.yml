@@ -29,7 +29,13 @@ jobs:
 
       - name: Process fundamentals
         run: bash ./scripts/process_all_fundamentals.sh --parallel 4
-        timeout-minutes: 60
+        timeout-minutes: 240
+
+      - name: Upload processing logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: process-fundamentals-logs
+          path: scripts/logs
 
       # - name: Run snapshot
       #   run: node ./scripts/snapshot-fundamentals.cjs
