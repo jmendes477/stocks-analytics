@@ -28,7 +28,7 @@ jobs:
         run: npm ci      
 
       - name: Process fundamentals
-        run: bash ./scripts/process_all_fundamentals.sh --parallel 4
+        run: bash ./scripts/process_all_fundamentals.sh --parallel 4 || true
         timeout-minutes: 240
 
       # - name: Upload processing logs
@@ -44,7 +44,7 @@ jobs:
 
       - name: Compute valuation z-scores
         run: node ./scripts/compute-valuation-zscores.cjs
-        timeout-minutes: 30
+        timeout-minutes: 45
 
       - name: Compute historical z-scores
         run: node ./scripts/compute-historical-zscores.cjs
