@@ -27,13 +27,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Debug: process first 10 symbols
+      - name: Debug process first 10 symbols
         run: |
           head -n 10 scripts/symbols.txt > scripts/tmp_symbols.txt
           bash ./scripts/process_all_fundamentals.sh --symbols-file scripts/tmp_symbols.txt --parallel 1
         timeout-minutes: 10
 
-      - name: Debug: show debug logs and DB counts
+      - name: Debug show debug logs and DB counts
         run: |
           ls -la scripts/logs || true
           tail -n 200 scripts/logs/process_fundamentals.log || true
