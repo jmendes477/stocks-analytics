@@ -30,10 +30,11 @@ jobs:
       - name: Debug process first 10 symbols
         run: |
           head -n 10 scripts/symbols.txt > scripts/tmp_symbols.txt
-          bash ./scripts/process_all_fundamentals.sh --symbols-file scripts/tmp_symbols.txt --parallel 1
+          bash ./scripts/process_all_fundamentals.sh --symbols-file scripts/tmp_symbols.txt --parallel 1 || true
         timeout-minutes: 10
 
-      - name: Debug show debug logs and DB counts
+      - name: Debug show debug logs and DB counts        
+        if: always()        
         run: |
           ls -la scripts/logs || true
           tail -n 200 scripts/logs/process_fundamentals.log || true
@@ -44,6 +45,7 @@ jobs:
         timeout-minutes: 5
 
       - name: Upload debug logs
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: debug-process-fundamentals-logs
@@ -54,6 +56,7 @@ jobs:
         timeout-minutes: 240
 
       - name: Upload processing logs
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: process-fundamentals-logs
