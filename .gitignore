@@ -27,5 +27,4 @@ node_modules
 .next
 scripts/logs/
 scripts/__pycache__/
-scripts/symbols.txt
 scripts/nasdaq-listed.csv
