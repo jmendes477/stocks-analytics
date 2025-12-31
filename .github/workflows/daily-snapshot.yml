@@ -44,12 +44,12 @@ jobs:
 
       - name: Compute valuation z-scores
         run: node ./scripts/compute-valuation-zscores.cjs
-        timeout-minutes: 45
+        timeout-minutes: 240
 
       - name: Compute historical z-scores
         run: node ./scripts/compute-historical-zscores.cjs
-        timeout-minutes: 45
+        timeout-minutes: 240
 
       - name: Compute composite scores
         run: node ./scripts/compute-composite-scores.cjs
-        timeout-minutes: 15
+        timeout-minutes: 240
