@@ -28,3 +28,5 @@ node_modules
 scripts/logs/
 scripts/__pycache__/
 scripts/nasdaq-listed.csv
+
+/android/.gradle
