@@ -189,6 +189,20 @@ async function up() {
     `);
     console.log('✓ Created index on symbol in valuation_zscores_timeseries');
 
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS valuation_metrics_timeseries (
+        symbol TEXT NOT NULL,
+        as_of DATE NOT NULL,
+        price NUMERIC,
+        eps_ttm NUMERIC,
+        pe_ratio NUMERIC,
+        source TEXT,
+        created_at TIMESTAMP DEFAULT now(),
+        PRIMARY KEY (symbol, as_of)
+      );
+    `);
+    console.log('✓ Created valuation_metrics_timeseries table');
+
     console.log('✓ All migrations applied successfully');
   } catch (error) {
     console.error('Migration error:', error);
